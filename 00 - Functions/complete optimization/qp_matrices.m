@@ -1,0 +1,89 @@
+function [mpc] = qp_matrices(mpc_param, pred_model, ref)
+
+
+%% Assignation
+Ts = mpc_param.Ts;
+nx = mpc_param.nx;
+ny = mpc_param.ny;
+nu = mpc_param.nu;
+Np = mpc_param.Np;
+Nc = mpc_param.Nc;
+Q = mpc_param.Q;
+R = mpc_param.R;
+
+x_c = mpc_param.x_c;
+u_c = mpc_param.u_c;
+du_c = mpc_param.du_c;
+
+Ad = pred_model.Ad;
+Bd = pred_model.Bd;
+Kd = pred_model.Kd;
+Cd = pred_model.Cd;
+
+
+
+%% Initialization
+A_bar = zeros(nx*Np, nx);
+B_bar = zeros(nx*Np, nu*Nc);
+K_bar = zeros(nx*Np, 1);
+C_bar = zeros(ny*Np, nx);
+D_bar = zeros(ny*Np, nu*Nc);
+L_bar = zeros(ny*Np, 1);
+Q_bar = zeros(ny*Np, ny*Np);
+R_bar = zeros(nu*Nc, nu*Nc);
+X_c = zeros(nx*Np, 2);
+U_c = zeros(nu*Nc, 2);
+dU_c = zeros(nu*Nc, 2);
+
+
+
+%% QP
+Adi = eye(nx);
+Kdi = zeros(nx,1);
+
+for i = 1:Np
+    
+    Adi = Ad*Adi;
+    Kdi = Kdi + (Ad^(i-1)*Kd);
+    
+    A_bar((i-1)*nx+1:i*nx, 1:nx) = Adi;
+    X_c((i-1)*nx+1:i*nx, 1:2) = x_c;
+    Q_bar((i-1)*ny+1:i*ny, (i-1)*ny+1:i*ny) = Q;
+    
+    for j = 1:Nc
+        if j <= i
+            B_bar((i-1)*nx+1:i*nx, (j-1)*nu+1:j*nu) = Adi*Bd;
+        end
+        R_bar((j-1)*nu+1:j*nu, (j-1)*nu+1:j*nu) = R;
+        U_c((j-1)*nu+1:j*nu, 1:2) = u_c;
+        dU_c((j-1)*nu+1:j*nu, 1:2) = du_c;
+    end
+    
+    K_bar((i-1)*nx+1:i*nx, 1) = Kdi;
+       
+end
+
+REF = repmat(ref, Np, 1);
+
+
+%% Structure
+mpc.A_bar = A_bar;
+mpc.B_bar = B_bar;
+mpc.C_bar = C_bar;
+mpc.D_bar = D_bar;
+mpc.K_bar = K_bar;
+mpc.L_bar = L_bar;
+
+mpc.Q_bar = Q_bar;
+mpc.R_bar = R_bar;
+
+mpc.X_min = X_c(:,1);
+mpc.X_max = X_c(:,2);
+mpc.U_min = U_c(:,1);
+mpc.U_max = U_c(:,2);
+mpc.dU_min = dU_c(:,1);
+mpc.dU_max = dU_c(:,2);
+
+mpc.REF = REF;
+
+end
