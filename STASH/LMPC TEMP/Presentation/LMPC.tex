@@ -1,0 +1,189 @@
+% !TEX encoding = UTF-8 Unicode
+% !TEX TS-program = LuaLaTeX
+
+
+
+\documentclass[8pt]{beamer}
+
+
+\mode<presentation> {
+    % The Beamer class comes with a number of default slide themes
+    % which change the colors and layouts of slides. Below this is a list
+    % of all the themes, uncomment each in turn to see what they look like.
+
+    \usetheme{default}
+    %\usetheme{AnnArbor}
+    %\usetheme{Antibes}
+    %\usetheme{Bergen}
+    %\usetheme{Berkeley}
+    %\usetheme{Berlin}
+    %\usetheme{Boadilla}
+    %\usetheme{CambridgeUS}
+    %\usetheme{Copenhagen}
+    %\usetheme{Darmstadt}
+    %\usetheme{Dresden}
+    %\usetheme{Frankfurt}
+    %\usetheme{Goettingen}
+    %\usetheme{Hannover}
+    %\usetheme{Ilmenau}
+    %\usetheme{JuanLesPins}
+    %\usetheme{Luebeck}
+    %\usetheme{Madrid}
+    %\usetheme{Malmoe}
+    %\usetheme{Marburg}
+    %\usetheme{Montpellier}
+    %\usetheme{PaloAlto}
+    %\usetheme{Pittsburgh}
+    %\usetheme{Rochester}
+    %\usetheme{Singapore}
+    %\usetheme{Szeged}
+    %\usetheme{Warsaw}
+
+    % As well as themes, the Beamer class has a number of color themes
+    % for any slide theme. Uncomment each of these in turn to see how it
+    % changes the colors of your current slide theme.
+
+    %\usecolortheme{albatross}
+    %\usecolortheme{beaver}
+    %\usecolortheme{beetle}
+    \usecolortheme{crane}
+    %\usecolortheme{dolphin}
+    %\usecolortheme{dove}
+    %\usecolortheme{fly}
+    %\usecolortheme{lily}
+    %\usecolortheme{orchid}
+    %\usecolortheme{rose}
+    %\usecolortheme{seagull}
+    %\usecolortheme{seahorse}
+    %\usecolortheme{whale}
+    %\usecolortheme{wolverine}
+
+    %\setbeamertemplate{footline} % To remove the footer line in all slides uncomment this line
+    %\setbeamertemplate{footline}[page number] % To replace the footer line in all slides with a simple slide count uncomment this line
+
+    %\setbeamertemplate{navigation symbols}{} % To remove the navigation symbols from the bottom of all slides uncomment this line
+}
+
+\usepackage{graphicx} % Allows including images
+\usepackage{booktabs} % Allows the use of \toprule, \midrule and \bottomrule in tables
+
+
+
+%----------------------------------------------------------------------------------------
+%	DOCUMENT
+%----------------------------------------------------------------------------------------
+
+\begin{document}
+
+
+
+    \begin{frame}
+        \frametitle{Learning Model Predictive Control}
+        AIM: The objective of Learning MPC is to design a reference-free iterative control strategy, able to learn from previous iterations.
+        
+        An infinite horizon optimal control problem can be approximated as a finite horizon optimal control problem for MPC fomrulation:
+        
+        \begin{equation}
+            \begin{aligned}
+                \min_{U_k} \quad & \sum_{i = 0}^{\infty} \left( h(x_{k}, u_{k}) \right)   \\
+                \textrm{s.t.} \quad & x_{k+1} = Ax_{k} + Bu_{k} \\
+                                    & x_{0} = x_{s} \\
+                                    & x_{k} \in X_{c}  \\
+                                    & u_{k} \in U_{c}  \\
+            \end{aligned}
+            \Longrightarrow 
+            \begin{aligned}
+                \min_{U_k} \quad & \sum_{i = 0}^{N_p-1} \left( h(x_{k}, u_{k}) + \boxed{ Q^{j-1}(x_{N_p|k}) } \right)    \\
+                \textrm{s.t.} \quad & \boxed{ x_{i+1|k} = f(x_{i|k}, u_{i|k}) }, \quad i \in [0, 1, ..., N_p-1] \\
+                                    & x_0 = x^{j}_{0|k}  \\
+                                    & x_{i|k} \in X_{c}, \quad i \in [0, 1, ..., N_p-1] \\
+                                    & u_{i|k} \in U_{c}, \quad i \in [0, 1, ..., N_p-1] \\
+                                    & x_{N_p|k} \in \boxed{ SS^{j-1} }  \\
+            \end{aligned}
+        \end{equation}
+        where:  $ \begin{array}[t]{l}
+            SS^{j-1} \quad $terminal constraint (Safe Set)$  \\
+            Q^{j-1} \quad $terminal cost function (Iteration Cost)$  \\
+        \end{array} $ \\
+
+        Assumption: There exists a initial feasible trajectory $x^0$, which starts from the initial state $x_0$ and converging to the final goal $x_f$.
+
+    \end{frame}
+    
+
+
+
+    \begin{frame}
+        \frametitle{Safe Set}
+
+        Terminal constraint is needed to ensure:
+        \begin{itemize}
+            \item Recursive feasibility
+            \item Iterative feasibility
+        \end{itemize}
+
+        It is defined the Safe Set SS at j-th iteration, as the set of all the successful trajectories performed in the first j iterations:
+        \begin{equation}
+            SS^j = \left\{ \bigcup_{i \in M^j} \bigcup_{t=0}^{\infty}x_{t}^{i} \right\} 
+        \end{equation}
+        where:  $ \begin{array}[t]{l}
+            M^j \quad $set of trajectories of successful iterations$  \\
+        \end{array} $ \\
+
+        \hfill \break
+
+        Particular case: Linear System
+        For linear systems it is possible to relax the Safe Set to its convex hull, defined Convex Set:
+        \begin{equation}
+            CS^j = Conv(SS^j)
+        \end{equation}
+
+    \end{frame}
+
+
+
+    \begin{frame}
+        \frametitle{Iteration Cost}
+
+        Terminal cost is needed to ensure:
+        \begin{itemize}
+            \item Asymptotical stability
+            \item Performance improvement
+        \end{itemize}
+
+        It is defined the Iteration cost:
+        \begin{equation}
+            Q^j(x) = \begin{cases}
+                \min_{(i,t) \in F^j(x)} \quad J_{t\rightarrow\infty}^{i}(x) \quad if \; x \in SS^j \\
+                +\infty, \quad if \; x \notin SS^j
+            \end{cases}
+        \end{equation}
+        where:  $ \begin{array}[t]{l}
+            J_{t\rightarrow\infty}^{i}(x) = \sum_{i = 0}^{\infty} \left( h(x_{i|k}^{j}, u_{i|k}^{j}) \right)  \quad $terminal cost (cost-to-go)$ \\
+        \end{array} $ \\
+
+        \hfill \break
+
+        Particular case: Linear System
+        For linear systems it is possible to relax the iteration cost, to its convex function:
+        \begin{equation}
+            P^j(x) = \begin{cases}
+                p^j(x) \quad if \; x \in SS^j \\
+                +\infty, \quad if \; x \notin SS^j \\
+            \end{cases}
+        \end{equation}
+
+        which is a LP:
+        \begin{equation}
+            \begin{aligned}
+                p^j(x) = \min_{\lambda_t^j \geqslant 0} \quad & \sum_{k=0}^{j} \sum_{t=0}^{t_j} \left( \lambda_t^k J_{t\rightarrow\infty}^{i}(x) \right)   \\
+                \textrm{s.t.} \quad & x_{k+1} = Ax_{k} + Bu_{k}, \quad x_{0} = x_{s} \\
+                                    & x_{k} \in X_{c}  \\
+                                    & u_{k} \in U_{c}  \\
+            \end{aligned}
+        \end{equation}
+
+    \end{frame}
+
+
+\end{document} 
